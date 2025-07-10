@@ -30,7 +30,7 @@ class AlgorithmService {
             };
             // 调用算法部门接口
             const response = await axios.post(
-                "http://125.88.36.147:5010/loadForecast/V1",
+                `http://125.88.36.152:15010/loadForecast/V1`,
                 requestData,
                 {
                     headers: {
@@ -53,7 +53,7 @@ class AlgorithmService {
         } catch (error) {
             console.error("调用算法接口失败:", {
                 message: error.message,
-                url: "http://10.0.110.169:5010/loadForecast/V1",
+                url: `http://125.88.36.152:15010/loadForecast/V1`,
                 // requestData: JSON.stringify(requestData), // 记录请求数据
                 // stack: error.stack,
             });
