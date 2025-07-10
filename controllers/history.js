@@ -6,7 +6,7 @@ const fs = require("fs");
 class HistoryController {
     static async listRecords(req, res) {
         try {
-            const records = await Record.findAll();
+            const records = await Record.findByUserId(req.user.id); // 只返回当前用户的记录
             res.json(records);
         } catch (error) {
             console.error("获取历史记录失败:", error);
@@ -17,9 +17,9 @@ class HistoryController {
     static async getRecordDetail(req, res) {
         try {
             const { id } = req.params;
-            const record = await Record.findById(id);
+            const record = await Record.findByIdAndUserId(id, req.user.id); // 验证记录是否属于当前用户
             if (!record) {
-                return res.status(404).json({ error: "记录不存在" });
+                return res.status(404).json({ error: "记录不存在或无权访问" });
             }
 
             if (typeof record.prediction_data === "string") {
@@ -65,6 +65,12 @@ class HistoryController {
         try {
             const { id } = req.params;
 
+            // 验证记录是否属于当前用户
+            const record = await Record.findByIdAndUserId(id, req.user.id);
+            if (!record) {
+                return res.status(404).json({ error: "记录不存在或无权访问" });
+            }
+
             // 删除记录并获取被删除的记录信息
             const deleteResult = await Record.delete(id);
 
@@ -73,7 +79,7 @@ class HistoryController {
             }
 
             // 删除相关文件
-            const { record } = deleteResult;
+            // const { record } = deleteResult;
 
             // 异步删除文件，不阻塞响应
             const deleteFiles = async () => {

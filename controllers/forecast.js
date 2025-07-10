@@ -4,6 +4,7 @@ const AlgorithmService = require("../services/algorithm");
 const Record = require("../models/Record");
 const path = require("path");
 const fs = require("fs");
+const User = require("../models/User");
 
 class ForecastController {
     static async processForecast(req, res) {
@@ -61,8 +62,16 @@ class ForecastController {
             // 生成结果Excel文件
             const result = ExcelService.generate(predictionData);
 
+            // 处理用户ID - 新逻辑
+            if (formData.user_id) {
+                const user = await User.findById(formData.user_id); // 验证用户ID是否存在
+                if (!user) {
+                    console.warn(`用户ID ${formData.user_id} 在数据库中不存在`);
+                }
+            }
             // 保存到数据库
             const record = {
+                user_id: formData.user_id,
                 customerType: formData.customerType,
                 pvConfig: formData.pvConfig,
                 province: location[0] || "",

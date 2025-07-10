@@ -5,10 +5,17 @@ const morgan = require("morgan");
 const forecastRouter = require("./routes/forecast");
 const historyRouter = require("./routes/history");
 const locationRouter = require("./routes/location");
+const authRouter = require("./routes/auth"); // 新增认证路由
 const db = require("./config/db");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// 环境变量添加JWT密钥
+if (!process.env.JWT_SECRET) {
+    console.error("JWT_SECRET环境变量未设置");
+    process.exit(1);
+}
 
 // 中间件
 app.use(
@@ -55,6 +62,7 @@ app.use((err, req, res, next) => {
 app.use("/api/forecast", forecastRouter);
 app.use("/api/history", historyRouter);
 app.use("/api/locationtree", locationRouter);
+app.use("/api/auth", authRouter); // 新增认证路由
 
 // 健康检查
 app.get("/health", (req, res) => {

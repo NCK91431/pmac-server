@@ -4,6 +4,7 @@ const pool = require("../config/db");
 class Record {
     static async create(record) {
         const {
+            user_id,
             customerType,
             pvConfig,
             province,
@@ -17,10 +18,11 @@ class Record {
 
         const [result] = await pool.execute(
             `INSERT INTO forecast_records 
-      (customer_type, pv_config, province, city, district, forecast_range, 
+      (user_id,customer_type, pv_config, province, city, district, forecast_range, 
        upload_file_path, result_file_path, prediction_data, created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
+                user_id,
                 customerType,
                 pvConfig,
                 province,
@@ -34,6 +36,42 @@ class Record {
         );
 
         return result.insertId;
+    }
+
+    static async findByUserId(userId) {
+        const [rows] = await pool.execute(
+            `SELECT id, customer_type, pv_config, province, city, district, 
+             forecast_range, created_at 
+      FROM forecast_records 
+      WHERE user_id = ?
+      ORDER BY created_at DESC`,
+            [userId]
+        );
+        return rows;
+    }
+
+    static async findByIdAndUserId(id, userId) {
+        const [rows] = await pool.execute(
+            `SELECT * FROM forecast_records WHERE id = ? AND user_id = ?`,
+            [id, userId]
+        );
+        return rows[0];
+    }
+
+    static async validateUserRecords(ids, userId) {
+        if (!ids || ids.length === 0) {
+            return [];
+        }
+
+        const placeholders = ids.map(() => "?").join(",");
+
+        const [rows] = await pool.execute(
+            `SELECT id FROM forecast_records 
+       WHERE id IN (${placeholders}) AND user_id = ?`,
+            [...ids, userId]
+        );
+
+        return rows.map((row) => row.id);
     }
 
     static async findAll() {
