@@ -21,6 +21,22 @@ class ForecastController {
             const loadData = ExcelService.parse(filePath);
 
             console.log("Excel数据解析成功，行数:", loadData.length);
+            console.log("第一行数据:", loadData[0]);
+
+            // 整理表头为为指定内容
+            if (!ForecastController.validateFirstRow(loadData)) {
+                //先验证首行内容有没有25列
+                return res
+                    .status(400)
+                    .json({ error: "Excel文件首行内容不正确" });
+            }
+            if (!ForecastController.validateHeader(loadData)) {
+                //如果没有满足首行的标准格式内容，那就将首行转换为标准的样子
+                loadData[0] = ForecastController.convertHeader(loadData[0]);
+                console.log("转换后的第一行数据:", loadData[0]);
+            }
+            console.log("第二行数据:", loadData[1]);
+            console.log("最后一行数据:", loadData[loadData.length - 1]);
 
             // 验证Excel格式 - 使用类名直接调用静态方法
             if (!ForecastController.validateExcel(loadData)) {
@@ -104,22 +120,31 @@ class ForecastController {
             });
         }
     }
-
-    // 验证Excel格式
-    static validateExcel(data) {
+    static convertHeader(header) {
+        return header.map((item, index) => {
+            if (index === 0) return "日期"; // 保留首元素
+            const hour = (index - 1).toString().padStart(2, "0"); // 计算小时并补零
+            return `${hour}:00`; // 格式化为 HH:00
+        });
+    }
+    static validateFirstRow(data) {
         // 1. 基本验证
         if (!data || !Array.isArray(data) || data.length < 2) {
             console.error("Excel数据行数不足或格式错误");
             return false;
         }
-
         // 2. 表头验证
         const header = data[0];
         if (!header || header.length < 25) {
             console.error("表头列数不足，应为25列（日期+24小时）");
             return false;
         }
+        console.log("Excel行数列数充足");
+        return true;
+    }
 
+    static validateHeader(data) {
+        const header = data[0];
         // 检查时间列
         for (let i = 1; i < 25; i++) {
             const hour = header[i].toString().trim();
@@ -137,14 +162,18 @@ class ForecastController {
                 const hourSuffixMatch = hour.match(/^(\d{1,2})时$/);
 
                 if (!timeMatch && !hourSuffixMatch) {
-                    console.error(
+                    // 如果都不是，那就仅仅只提示
+                    console.log(
                         `时间列格式错误: ${hour}，应为 0-23 的数字或 '0:00' 格式`
                     );
                     return false;
                 }
             }
         }
-
+        return true;
+    }
+    // 验证Excel格式
+    static validateExcel(data) {
         // 4. 数据行验证
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         for (let i = 1; i < data.length; i++) {
