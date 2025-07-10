@@ -4,6 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const forecastRouter = require("./routes/forecast");
 const historyRouter = require("./routes/history");
+const locationRouter = require("./routes/location");
 const db = require("./config/db");
 
 const app = express();
@@ -53,6 +54,7 @@ app.use((err, req, res, next) => {
 // 路由
 app.use("/api/forecast", forecastRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/locationtree", locationRouter);
 
 // 健康检查
 app.get("/health", (req, res) => {
