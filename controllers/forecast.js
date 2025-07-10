@@ -91,11 +91,7 @@ class ForecastController {
             const formInfo = {
                 customer_type: formData.customerType,
                 pv_config: formData.pvConfig,
-                area: {
-                    province: formData.location[0],
-                    city: formData.location[1],
-                    district: formData.location[2],
-                },
+                location: JSON.parse(formData.location),
                 forecast_range: formData.forecastRange,
             };
 
