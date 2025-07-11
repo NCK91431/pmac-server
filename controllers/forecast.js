@@ -71,7 +71,7 @@ class ForecastController {
             }
             // 保存到数据库
             const record = {
-                user_id: formData.user_id,
+                user_id: formData.user_id ? formData.user_id : null,
                 customerType: formData.customerType,
                 pvConfig: formData.pvConfig,
                 province: location[0] || "",
