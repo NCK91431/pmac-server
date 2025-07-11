@@ -39,11 +39,6 @@ class AlgorithmService {
                 }
             );
             console.log("算法接口返回的响应数据", response.data);
-            console.log("response.data.success->", response.data.success);
-            console.log(
-                "typeof response.data.success->",
-                typeof response.data.success
-            );
             // 转换数据格式
             const result = {
                 dates: [response.data.date], // 将单个日期转为数组
