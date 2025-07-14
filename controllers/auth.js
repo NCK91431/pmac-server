@@ -113,6 +113,60 @@ class AuthController {
             res.status(401).json({ error: "无效的认证令牌" });
         }
     }
+
+    /**
+     * 更新用户信息接口
+     * 接收：name, company
+     * 返回：更新后的用户信息
+     */
+    static async updateUser(req, res) {
+        try {
+            // 从已验证的用户中获取ID
+            const userId = req.user.id;
+            const { name, company } = req.body;
+
+            // 验证输入数据
+            if (!name || name.trim().length < 2) {
+                return res.status(400).json({
+                    error: "姓名不能为空且至少2个字符",
+                });
+            }
+
+            // 公司名称可选，但如果有值则验证长度
+            if (company && company.trim().length < 2) {
+                return res.status(400).json({
+                    error: "公司名称至少需要2个字符",
+                });
+            }
+
+            // 更新用户信息
+            const updatedUser = await User.update(userId, {
+                name: name.trim(),
+                company: company ? company.trim() : null,
+            });
+
+            if (!updatedUser) {
+                return res.status(404).json({ error: "用户未找到" });
+            }
+
+            res.json({
+                success: true,
+                message: "用户信息更新成功",
+                user: {
+                    id: updatedUser.id,
+                    name: updatedUser.name,
+                    phone: updatedUser.phone,
+                    company: updatedUser.company,
+                },
+            });
+        } catch (error) {
+            console.error("更新用户信息失败:", error);
+            res.status(500).json({
+                error: "更新用户信息失败",
+                details: error.message,
+            });
+        }
+    }
 }
 
 module.exports = AuthController;

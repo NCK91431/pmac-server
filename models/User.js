@@ -58,6 +58,24 @@ class User {
         ]);
         return rows[0];
     }
+
+    /**
+     * 更新用户信息（姓名和公司）
+     * @param {number} id - 用户ID
+     * @param {Object} updateData - 更新数据 { name, company }
+     * @returns {Promise<Object>} 更新后的用户对象
+     */
+    static async update(id, updateData) {
+        const { name, company } = updateData;
+
+        await pool.execute(
+            `UPDATE users SET name = ?, company = ? WHERE id = ?`,
+            [name, company, id]
+        );
+
+        // 返回更新后的用户信息
+        return this.findById(id);
+    }
 }
 
 module.exports = User;
