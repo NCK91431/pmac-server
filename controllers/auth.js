@@ -149,9 +149,19 @@ class AuthController {
                 return res.status(404).json({ error: "用户未找到" });
             }
 
+            // 生成新的JWT token（包含最新用户信息）
+            const newToken = jwt.sign(
+                {
+                    userId: updatedUser.id,
+                    phone: updatedUser.phone,
+                },
+                process.env.JWT_SECRET
+            );
+
             res.json({
                 success: true,
                 message: "用户信息更新成功",
+                token: newToken, // 返回新生成的token
                 user: {
                     id: updatedUser.id,
                     name: updatedUser.name,
