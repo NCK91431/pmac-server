@@ -23,9 +23,9 @@ class HistoryController {
             }
 
             if (typeof record.prediction_data === "string") {
-                record.predictionData = JSON.parse(record.prediction_data); // 解析预测数据
+                record.prediction_data = JSON.parse(record.prediction_data); // 解析预测数据
             } else {
-                record.predictionData = record.prediction_data; // 直接赋值
+                record.prediction_data = record.prediction_data; // 直接赋值
             }
 
             res.json(record);
