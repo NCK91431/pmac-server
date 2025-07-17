@@ -15,16 +15,15 @@ class AlgorithmService {
             // 准备请求数据
             requestData = {
                 formData: {
-                    pvConfig: form_data.pvConfig
-                        ? form_data.pvConfig == "yes"
+                    pvConfig: form_data.pv_config
+                        ? form_data.pv_config == "yes"
                             ? "有"
                             : "无"
                         : "不确定",
-                    // location: JSON.stringify(form_data.location), // 将数组转为字符串
-                    location: JSON.parse(form_data.location), // 直接使用数组，不再字符串化
+                    location: form_data.location, // 直接使用数组，不再字符串化
                     forecastRange:
-                        form_data.forecastRange === "4days" ? "D-4" : "D-1",
-                    customerType: customer_types_MAP[form_data.customerType],
+                        form_data.forecast_range === "4days" ? "D-4" : "D-1",
+                    customerType: customer_types_MAP[form_data.customer_type],
                 },
                 loadData,
             };
@@ -49,10 +48,7 @@ class AlgorithmService {
             console.error("调用算法接口失败:", {
                 message: error.message,
                 url: `http://125.88.36.152:15010/loadForecast/V1`,
-                // requestData: JSON.stringify(requestData), // 记录请求数据
-                // stack: error.stack,
             });
-            // throw new Error("算法服务不可用: " + error.message);
         }
     }
 }

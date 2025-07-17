@@ -5,33 +5,37 @@ class Record {
     static async create(record) {
         const {
             user_id,
-            customerType,
-            pvConfig,
+            customer_type,
+            pv_config,
             province,
             city,
             district,
-            forecastRange,
+            forecast_range,
             uploadFilePath,
             resultFilePath,
             predictionData,
+            uploadDateRange, // 新增字段
+            uploadData, // 新增字段
         } = record;
 
         const [result] = await pool.execute(
             `INSERT INTO forecast_records 
       (user_id,customer_type, pv_config, province, city, district, forecast_range, 
-       upload_file_path, result_file_path, prediction_data, created_at) 
-      VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       upload_file_path, result_file_path, prediction_data,upload_date_range, upload_data,created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
                 user_id,
-                customerType,
-                pvConfig,
+                customer_type,
+                pv_config,
                 province,
                 city,
                 district,
-                forecastRange,
+                forecast_range,
                 uploadFilePath,
                 resultFilePath,
                 JSON.stringify(predictionData), // 确保predictionData是JSON字符串
+                JSON.stringify(uploadDateRange), // 序列化JSON
+                JSON.stringify(uploadData), // 序列化JSON
             ]
         );
 
@@ -41,7 +45,7 @@ class Record {
     static async findByUserId(userId) {
         const [rows] = await pool.execute(
             `SELECT id, customer_type, pv_config, province, city, district, 
-             forecast_range, created_at 
+             forecast_range, created_at,upload_date_range,prediction_data 
       FROM forecast_records 
       WHERE user_id = ?
       ORDER BY created_at DESC`,
