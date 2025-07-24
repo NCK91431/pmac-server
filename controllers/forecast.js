@@ -80,7 +80,7 @@ class ForecastController {
 
             /* 四、如果是基于历史数据的继续预测 ---------------------------------------------------------- */
             const F_isContinuePredict = !!formData.previous_record_id;
-            let mergeData = []; // 合并的数据
+            let mergeData = null; // 合并的数据
             if (F_isContinuePredict) {
                 const continueResult =
                     await ForecastController.handleContinuePrediction(
@@ -343,31 +343,20 @@ class ForecastController {
     /* 处理继续预测逻辑 */
     static async handleContinuePrediction(previousRecordId, loadData) {
         try {
-            const previousRecord = await Record.findById(previousRecordId);
-            if (!previousRecord) {
-                return {
-                    success: false,
-                    statusCode: 400,
-                    error: "找不到基于的历史记录",
-                    errorCode: "DATABSE_ERROR",
-                    details: "无法基于此条历史记录进行继续预测，请您开启新预测",
-                };
-            }
+            // 1. 获取历史数据的最后日期
+            const lastHistoryDate = await Record.getLastDate(previousRecordId);
+            const historyEnd = parseISO(lastHistoryDate);
 
-            // 获取历史记录的结束日期
-            const previousEndDate = previousRecord.upload_date_range[1];
-            const previousEnd = parseISO(previousEndDate);
+            // 2. 计算要求的开始日期（历史结束日期的下一天）
+            const requiredStartDate = addDays(historyEnd, 1);
 
-            // 计算要求的开始日期 (结束日期的下一天)
-            const requiredStartDate = addDays(previousEnd, 1);
-
-            // 获取新上传文件的开始日期
+            // 3. 获取新上传文件的开始日期
             const newStartDate = loadData[1][0]; // 第一行数据是日期
             const newStart = parseISO(newStartDate);
 
-            // 验证日期连续性
+            // 4. 验证日期连续性
             if (
-                !isAfter(newStart, previousEnd) &&
+                !isAfter(newStart, historyEnd) &&
                 formatISO(newStart, { representation: "date" }) !==
                     formatISO(requiredStartDate, { representation: "date" })
             ) {
@@ -380,26 +369,22 @@ class ForecastController {
                 };
             }
 
-            // 获取历史记录的数据
-            let historyData = previousRecord.upload_data;
-            if (typeof historyData === "string") {
-                historyData = JSON.parse(historyData);
-            }
-            if (!Array.isArray(historyData)) {
-                throw new Error("历史记录数据格式无效");
-            }
+            // 5. 获取完整的历史数据（包括所有祖先记录）
+            const historyData = await Record.getMergedData(previousRecordId);
 
-            // 合并数据（历史数据体 + 新数据体）
-            const mergedBody = [
-                ...historyData.slice(1), // 历史数据（去掉表头）
+            // 6. 合并数据：历史数据 + 新数据（去掉表头）
+            const mergedData = [
+                ...historyData, // 历史数据（包含表头）
                 ...loadData.slice(1), // 新数据（去掉表头）
             ];
-            const mergeData = [loadData[0], ...mergedBody]; // 使用新数据的表头
+
+            // 7. 计算历史天数（数据行数，不包括表头）
+            const historyDays = historyData.length - 1;
 
             return {
                 success: true,
-                mergeData,
-                historyDays: historyData.length - 1,
+                mergeData: mergedData,
+                historyDays,
             };
         } catch (error) {
             console.error("继续预测处理失败:", error);
