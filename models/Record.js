@@ -16,13 +16,14 @@ class Record {
             predictionData,
             uploadDateRange, // 新增字段
             uploadData, // 新增字段
+            previous_record_id,
         } = record;
 
         const [result] = await pool.execute(
             `INSERT INTO forecast_records 
       (user_id,customer_type, pv_config, province, city, district, forecast_range, 
-       upload_file_path, result_file_path, prediction_data,upload_date_range, upload_data,created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       upload_file_path, result_file_path, prediction_data,upload_date_range, upload_data, previous_record_id, created_at) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
                 user_id,
                 customer_type,
@@ -36,6 +37,7 @@ class Record {
                 JSON.stringify(predictionData), // 确保predictionData是JSON字符串
                 JSON.stringify(uploadDateRange), // 序列化JSON
                 JSON.stringify(uploadData), // 序列化JSON
+                previous_record_id,
             ]
         );
 

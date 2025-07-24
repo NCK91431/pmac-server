@@ -5,6 +5,7 @@ const Record = require("../models/Record");
 const path = require("path");
 const fs = require("fs");
 const User = require("../models/User");
+const { addDays, isAfter, parseISO, formatISO } = require("date-fns");
 
 class ForecastController {
     static async processForecast(req, res) {
@@ -39,7 +40,10 @@ class ForecastController {
                 });
             }
 
-            /* 三、文件格式正确？ */
+            // 提取时间范围
+            let dateRange = ForecastController.extractDateRange(loadData);
+
+            /* 三、文件格式正确？---------------------------------------------------------- */
             // 1.基础验证（行数、列数）
             const base_result = ForecastController.baseValidate(loadData);
             if (!base_result.valid) {
@@ -74,12 +78,98 @@ class ForecastController {
                 console.log(rows_result.message);
             }
 
+            /* 四、如果是基于历史数据的继续预测 ---------------------------------------------------------- */
+            const F_isContinuePredict = formData.previous_record_id
+                ? true
+                : false;
+            let mergeData = []; // 合并的数据
+            if (F_isContinuePredict) {
+                let previousRecord = null; // 前记录
+                previousRecord = await Record.findById(
+                    formData.previous_record_id
+                );
+                if (!previousRecord) {
+                    return res.status(400).json({
+                        success: false,
+                        error: "找不到基于的历史记录",
+                        errorCode: "DATABSE_ERROR",
+                        details: `无法基于此条历史记录进行继续预测，请您开启新预测`,
+                    });
+                }
+                // 获取历史记录的结束日期
+                const previousEndDate = previousRecord.upload_date_range[1];
+                const previousEnd = parseISO(previousEndDate);
+
+                // 计算要求的开始日期 (结束日期的下一天)
+                const requiredStartDate = addDays(previousEnd, 1);
+
+                // 获取新上传文件的开始日期
+                const newStartDate = loadData[1][0]; // 第一行数据是日期
+                const newStart = parseISO(newStartDate);
+
+                // 验证日期连续性 如果有日期连续性问题，返回错误
+                if (
+                    !isAfter(newStart, previousEnd) &&
+                    formatISO(newStart, { representation: "date" }) !==
+                        formatISO(requiredStartDate, {
+                            representation: "date",
+                        })
+                ) {
+                    let dateContinuityError = {
+                        previousEnd: formatISO(previousEnd, {
+                            representation: "date",
+                        }),
+                        requiredStart: formatISO(requiredStartDate, {
+                            representation: "date",
+                        }),
+                        actualStart: newStartDate,
+                    };
+                    return res.status(400).json({
+                        success: false,
+                        error: "日期不连续",
+                        errorCode: "DATE_CONTINUITY_ERROR",
+                        details: `继续预测要求数据从 ${dateContinuityError.requiredStart} 开始，但上传的数据从 ${dateContinuityError.actualStart} 开始`,
+                    });
+                }
+                // 如果存在有效的前记录且日期连续，则合并数据
+                try {
+                    // 获取历史记录的数据
+                    let historyData = previousRecord.upload_data;
+                    if (typeof historyData === "string") {
+                        historyData = JSON.parse(historyData);
+                    }
+                    // 检查历史数据格式是否有效
+                    if (!Array.isArray(historyData)) {
+                        throw new Error("历史记录数据格式无效");
+                    }
+                    // 合并数据（历史数据体 + 新数据体）
+                    const mergedBody = [
+                        ...historyData.slice(1), // 历史数据（去掉表头）
+                        ...loadData.slice(1), // 新数据（去掉表头）
+                    ];
+                    // 重建完整数据（保留新数据的表头）
+                    mergeData = [loadData[0], ...mergedBody];
+                    console.log(
+                        `数据合并成功，历史记录天数: ${historyData.length - 1}, 新数据天数: ${loadData.length - 1}, 总天数: ${mergeData.length - 1}`
+                    );
+                } catch (mergeError) {
+                    console.error("数据合并失败:", mergeError);
+                    return res.status(500).json({
+                        success: false,
+                        error: "历史数据合并失败",
+                        errorCode: "DATA_MERGE_ERROR",
+                        details: mergeError.message,
+                    });
+                }
+            }
+
             /* 四、调用算法服务进行预测 */
             let predictionData;
             try {
+                let param_2 = F_isContinuePredict ? mergeData : loadData; // 用户上传的负荷数据：如果不是继续预测，就是loadData本身没变，如果是继续预测，则为合并后的数据
                 predictionData = await AlgorithmService.predict(
                     formData,
-                    loadData
+                    param_2
                 );
             } catch (algorithmError) {
                 return res.status(500).json({
@@ -110,8 +200,7 @@ class ForecastController {
                     console.warn(`用户ID ${formData.user_id} 在数据库中不存在`);
                 }
             }
-            // 提取时间范围
-            const dateRange = ForecastController.extractDateRange(loadData);
+
             // 保存到数据库
             const record = {
                 user_id: formData.user_id ? formData.user_id : null,
@@ -126,6 +215,9 @@ class ForecastController {
                 predictionData,
                 uploadDateRange: dateRange, // 时间范围
                 uploadData: loadData, // 解析后的数据
+                previous_record_id: F_isContinuePredict // 如果用户是基于历史数据继续预测的则要保存父链接
+                    ? formData.previous_record_id
+                    : null,
             };
 
             const recordId = await Record.create(record);
