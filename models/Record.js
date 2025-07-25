@@ -47,7 +47,7 @@ class Record {
     static async findByUserId(userId) {
         const [rows] = await pool.execute(
             `SELECT id, customer_type, pv_config, province, city, district, 
-             forecast_range, created_at,upload_date_range,prediction_data 
+             forecast_range, created_at,upload_date_range,prediction_data,previous_record_id
       FROM forecast_records 
       WHERE user_id = ?
       ORDER BY created_at DESC`,

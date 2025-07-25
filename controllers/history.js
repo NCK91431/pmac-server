@@ -6,29 +6,93 @@ const fs = require("fs");
 class HistoryController {
     static async listRecords(req, res) {
         try {
-            const records = await Record.findByUserId(req.user.id); // 只返回当前用户的记录
-            res.json(records);
+            const records = await Record.findByUserId(req.user.id); // 获取所有记录
+            const tree = HistoryController.buildRecordTree(records); // 构建树状结构
+            res.json(tree);
         } catch (error) {
             console.error("获取历史记录失败:", error);
             res.status(500).json({ error: "获取历史记录失败" });
         }
     }
 
+    /**
+     * 构建树状记录结构
+     * @param {Array} records - 所有记录
+     * @returns {Array} - 树状结构
+     */
+    static buildRecordTree(records) {
+        // 创建ID映射
+        const recordMap = {};
+        records.forEach((record) => {
+            recordMap[record.id] = {
+                id: record.id,
+                customer_type: record.customer_type,
+                location: [record.province, record.city, record.district],
+                forecast_range: record.forecast_range,
+                created_at: record.created_at,
+                upload_date_range: record.upload_date_range
+                    ? typeof record.upload_date_range === "string"
+                        ? JSON.parse(record.upload_date_range)
+                        : record.upload_date_range
+                    : [],
+                // 获取预测日期（预测数据的第一天）
+                prediction_date: record.prediction_data.dates[0],
+                previous_record_id: record.previous_record_id,
+                children: [],
+            };
+        });
+
+        // 构建树
+        const tree = [];
+        records.forEach((record) => {
+            const node = recordMap[record.id];
+
+            if (record.previous_record_id) {
+                // 添加到父节点
+                const parent = recordMap[record.previous_record_id];
+                if (parent) {
+                    parent.children.push(node);
+                }
+            } else {
+                // 根节点
+                tree.push(node);
+            }
+        });
+
+        return tree;
+    }
     static async getRecordDetail(req, res) {
         try {
             const { id } = req.params;
-            const record = await Record.findByIdAndUserId(id, req.user.id); // 验证记录是否属于当前用户
+            const record = await Record.findByIdAndUserId(id, req.user.id);
             if (!record) {
                 return res.status(404).json({ error: "记录不存在或无权访问" });
             }
 
+            // 解析预测数据
             if (typeof record.prediction_data === "string") {
-                record.prediction_data = JSON.parse(record.prediction_data); // 解析预测数据
-            } else {
-                record.prediction_data = record.prediction_data; // 直接赋值
+                record.prediction_data = JSON.parse(record.prediction_data);
             }
 
-            res.json(record);
+            // 添加树状结构需要的字段
+            const formattedRecord = {
+                id: record.id,
+                customer_type: record.customer_type,
+                pv_config: record.pv_config,
+                location: [record.province, record.city, record.district],
+                forecast_range: record.forecast_range,
+                created_at: record.created_at,
+                upload_date_range: record.upload_date_range
+                    ? typeof record.upload_date_range === "string"
+                        ? JSON.parse(record.upload_date_range)
+                        : record.upload_date_range
+                    : [],
+                prediction_date: record.prediction_data.dates[0],
+                prediction_data: record.prediction_data,
+                previous_record_id: record.previous_record_id,
+            };
+
+            res.json(formattedRecord);
         } catch (error) {
             console.error("获取记录详情失败:", error);
             res.status(500).json({ error: "获取记录详情失败" });
