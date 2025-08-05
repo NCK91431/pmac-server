@@ -79,6 +79,7 @@ class HistoryController {
                 id: record.id,
                 customer_type: record.customer_type,
                 pv_config: record.pv_config,
+                pv_capacity: record.pv_capacity,
                 location: [record.province, record.city, record.district],
                 forecast_range: record.forecast_range,
                 created_at: record.created_at,

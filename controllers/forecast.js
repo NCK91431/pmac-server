@@ -150,6 +150,7 @@ class ForecastController {
                 user_id: formData.user_id ? formData.user_id : null,
                 customer_type: formData.customer_type,
                 pv_config: formData.pv_config,
+                pv_capacity: formData.pv_capacity,
                 province: formData.location[0] || "",
                 city: formData.location[1] || "",
                 district: formData.location[2] || "",

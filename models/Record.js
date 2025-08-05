@@ -7,6 +7,7 @@ class Record {
             user_id,
             customer_type,
             pv_config,
+            pv_capacity,
             province,
             city,
             district,
@@ -21,13 +22,14 @@ class Record {
 
         const [result] = await pool.execute(
             `INSERT INTO forecast_records 
-      (user_id,customer_type, pv_config, province, city, district, forecast_range, 
+      (user_id,customer_type, pv_config, pv_capacity, province, city, district, forecast_range, 
        upload_file_path, result_file_path, prediction_data,upload_date_range, upload_data, previous_record_id, created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
                 user_id,
                 customer_type,
                 pv_config,
+                pv_capacity,
                 province,
                 city,
                 district,
@@ -46,7 +48,7 @@ class Record {
 
     static async findByUserId(userId) {
         const [rows] = await pool.execute(
-            `SELECT id, customer_type, pv_config, province, city, district, 
+            `SELECT id, customer_type, pv_config, pv_capacity, province, city, district, 
              forecast_range, created_at,upload_date_range,prediction_data,previous_record_id
       FROM forecast_records 
       WHERE user_id = ?
@@ -82,7 +84,7 @@ class Record {
 
     static async findAll() {
         const [rows] = await pool.query(`
-      SELECT id, customer_type, pv_config, province, city, district, 
+      SELECT id, customer_type, pv_config, pv_capacity, province, city, district, 
              forecast_range, created_at 
       FROM forecast_records 
       ORDER BY created_at DESC
