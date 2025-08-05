@@ -66,7 +66,11 @@ class ForecastController {
                 console.log(times_result.message);
             }
             // 3.表格体数据验证（每行行首、每行数据类型）
-            const rows_result = ForecastController.validateExcel(loadData);
+            const F_isContinuePredict = !!formData.previous_record_id;
+            const rows_result = ForecastController.validateExcel(
+                loadData,
+                F_isContinuePredict
+            );
             if (!rows_result.valid) {
                 return res.status(400).json({
                     success: false,
@@ -79,7 +83,7 @@ class ForecastController {
             }
 
             /* 四、如果是基于历史数据的继续预测 ---------------------------------------------------------- */
-            const F_isContinuePredict = !!formData.previous_record_id;
+
             let mergeData = null; // 合并的数据
             if (F_isContinuePredict) {
                 const continueResult =
@@ -256,14 +260,17 @@ class ForecastController {
         });
     }
     /* 表格体数据验证（每行行首、每行数据类型） */
-    static validateExcel(data) {
-        if (data.length < 31) {
+    static validateExcel(data, isContinuePredict = false) {
+        const minDays = isContinuePredict ? 1 : 30; // 根据是否为继续预测，设置不同的最小天数要求
+        const minRows = minDays + 1; // 加上表头行（第1行）
+        if (data.length < minRows) {
             return {
                 valid: false,
-                message: `数据不足导致无法预测，请提供至少30天的数据`,
+                message: `数据不足导致无法预测，请提供至少${minDays}天的数据`,
             };
         }
         // 4. 数据行验证
+        const dates = []; // 收集所有日期并验证格式
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         for (let i = 1; i < data.length; i++) {
             const row = data[i];
@@ -291,13 +298,61 @@ class ForecastController {
                     };
                 }
             }
+            dates.push(parseISO(row[0])); // 收集日期（已通过格式验证）
         }
+
+        // 新增：验证日期连续性
+        const dateContinuityResult =
+            ForecastController.validateDateContinuity(dates);
+        if (!dateContinuityResult.valid) {
+            return {
+                valid: false,
+                message: dateContinuityResult.message,
+            };
+        }
+
         return {
             valid: true,
             message: "表格体数据验证通过",
         };
     }
 
+    /**
+     * 验证日期连续性和顺序
+     * @param {Date[]} dates - 日期对象数组
+     * @returns {object} 验证结果
+     */
+    static validateDateContinuity(dates) {
+        // 检查日期是否按时间顺序排列且连续
+        for (let i = 1; i < dates.length; i++) {
+            const prevDate = dates[i - 1];
+            const currentDate = dates[i];
+
+            // 检查日期是否乱序
+            if (isAfter(prevDate, currentDate)) {
+                return {
+                    valid: false,
+                    message: `日期顺序错误：${formatISO(prevDate, { representation: "date" })} 不应在 ${formatISO(currentDate, { representation: "date" })} 之后`,
+                };
+            }
+
+            // 检查日期是否连续（当前日期应为前一天的后一天）
+            const expectedNextDate = addDays(prevDate, 1);
+            if (
+                formatISO(currentDate, { representation: "date" }) !==
+                formatISO(expectedNextDate, { representation: "date" })
+            ) {
+                return {
+                    valid: false,
+                    message: `日期不连续：${formatISO(prevDate, { representation: "date" })} 和 ${formatISO(currentDate, { representation: "date" })} 之间存在间隔`,
+                };
+            }
+        }
+        return {
+            valid: true,
+            message: "日期连续性验证通过",
+        };
+    }
     // 新增方法：计算Excel统计信息
     static calculateExcelStats(loadData) {
         // 确保数据有效
@@ -356,9 +411,8 @@ class ForecastController {
 
             // 4. 验证日期连续性
             if (
-                !isAfter(newStart, historyEnd) &&
                 formatISO(newStart, { representation: "date" }) !==
-                    formatISO(requiredStartDate, { representation: "date" })
+                formatISO(requiredStartDate, { representation: "date" })
             ) {
                 return {
                     success: false,
