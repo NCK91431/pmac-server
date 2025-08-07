@@ -31,6 +31,27 @@ class ForecastController {
             try {
                 loadData = ExcelService.parse(filePath);
                 console.log("Excel数据解析成功，行数:", loadData.length);
+                // +++ 新增：过滤末尾空行 +++
+                while (loadData.length > 0) {
+                    const lastRow = loadData[loadData.length - 1];
+                    // 检查行是否为空：长度为0 或 所有单元格都是空值
+                    if (
+                        lastRow.length === 0 ||
+                        lastRow.every(
+                            (cell) =>
+                                cell === null ||
+                                cell === undefined ||
+                                cell === ""
+                        )
+                    ) {
+                        loadData.pop(); // 移除空行
+                    } else {
+                        break; // 遇到非空行停止
+                    }
+                }
+                console.log("过滤空行后行数:", loadData.length);
+                // +++ 过滤结束 +++
+                console.log("最后一行数据:", loadData[loadData.length - 1]);
             } catch (parseError) {
                 return res.status(400).json({
                     success: false,
