@@ -16,6 +16,11 @@ class ForecastController {
         try {
             const formData = req.body;
             const file = req.file;
+            file.originalname = Buffer.from(
+                file.originalname,
+                "binary"
+            ).toString("utf8");
+
             /* 一、文件存在？ */
             if (!file)
                 res.status(400).json({
