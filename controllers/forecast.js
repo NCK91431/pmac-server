@@ -196,7 +196,10 @@ class ForecastController {
                 size: Math.round(file.size / 1024), // 转换为KB
                 uploadTime: new Date().toISOString().split("T")[0],
                 url: `/api/history/${recordId}/download/upload`,
-                stats: ForecastController.calculateExcelStats(loadData),
+                stats: ForecastController.calculateExcelStats(
+                    loadData,
+                    F_isContinuePredict
+                ),
                 dateRange, // 返回给前端
             };
             // 返回响应
@@ -376,7 +379,7 @@ class ForecastController {
         };
     }
     // 新增方法：计算Excel统计信息
-    static calculateExcelStats(loadData) {
+    static calculateExcelStats(loadData, isContinuePredict = false) {
         // 确保数据有效
         if (!loadData || loadData.length === 0) {
             return {
@@ -392,13 +395,15 @@ class ForecastController {
         const pointsPerDay = loadData[0].length - 1;
         // 添加额外验证逻辑（可选）
         let status = "已验证";
-        if (days < 365) {
-            status = `已验证（警告：数据天数少于一年，将影响节假日预测效果）`;
-            if (days < 90) {
-                status = `已验证（警告：数据天数少于90天，影响预测效果）`;
+        if (!isContinuePredict) {
+            if (days < 365) {
+                status = `已验证（警告：数据天数少于一年，将影响节假日预测效果）`;
+                if (days < 90) {
+                    status = `已验证（警告：数据天数少于90天，影响预测效果）`;
+                }
+            } else if (pointsPerDay !== 24) {
+                status = `已验证（警告：时间粒度不是24小时）`;
             }
-        } else if (pointsPerDay !== 24) {
-            status = `已验证（警告：时间粒度不是24小时）`;
         }
         return {
             days,
