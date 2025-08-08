@@ -22,7 +22,7 @@ class AlgorithmService {
                             ? "有"
                             : "无"
                         : "不确定",
-                    capacity: payload.pv_capacity,
+                    pvCapacity: payload.pv_capacity,
                     location: payload.location, // 直接使用数组，不再字符串化
                     forecastRange:
                         payload.forecast_range === "4days" ? "D-4" : "D-1",
