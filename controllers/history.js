@@ -36,7 +36,10 @@ class HistoryController {
                         : record.upload_date_range
                     : [],
                 // 获取预测日期（预测数据的第一天）
-                prediction_date: record.prediction_data.dates[0],
+                prediction_date:
+                    record.prediction_data && record.prediction_data.dates
+                        ? record.prediction_data.dates[0]
+                        : null,
                 previous_record_id: record.previous_record_id,
                 children: [],
             };

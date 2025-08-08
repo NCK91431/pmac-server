@@ -173,6 +173,66 @@ class Record {
 
         return dateRange[1]; // 返回结束日期
     }
+    /**
+     * 更新预测记录
+     * @param {number} id - 记录ID
+     * @param {object} fields - 要更新的字段对象
+     * @returns {Promise<number>} - 受影响的行数
+     */
+    static async update(id, fields) {
+        // 构建 SET 子句和值数组
+        const setClauses = [];
+        const values = [];
+
+        // 遍历字段对象
+        for (const [key, value] of Object.entries(fields)) {
+            switch (key) {
+                case "predictionData":
+                    setClauses.push("prediction_data = ?");
+                    values.push(JSON.stringify(value));
+                    break;
+                case "resultFilePath":
+                    setClauses.push("result_file_path = ?");
+                    values.push(value);
+                    break;
+                default:
+                    console.warn(`忽略未知字段: ${key}`);
+            }
+        }
+
+        // 如果没有可更新的字段，直接返回
+        if (setClauses.length === 0) {
+            console.warn("没有提供可更新的字段");
+            return 0;
+        }
+
+        // 添加 WHERE 条件的值
+        values.push(id);
+
+        // 构建 SQL 查询
+        const query = `
+            UPDATE forecast_records 
+            SET ${setClauses.join(", ")}
+            WHERE id = ?
+        `;
+
+        // 执行更新
+        const [result] = await pool.execute(query, values);
+        return result.affectedRows;
+    }
+
+    /**
+     * 根据ID删除记录（不返回被删除的记录）
+     * @param {number} id - 记录ID
+     * @returns {Promise<number>} - 受影响的行数
+     */
+    static async deleteById(id) {
+        const [result] = await pool.execute(
+            `DELETE FROM forecast_records WHERE id = ?`,
+            [id]
+        );
+        return result.affectedRows;
+    }
 }
 
 module.exports = Record;

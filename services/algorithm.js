@@ -1,9 +1,8 @@
 const axios = require("axios");
 
 class AlgorithmService {
-    static async predict(form_data, loadData) {
-        // console.log("formData原始数据->", form_data);
-
+    static async predict(payload, loadData) {
+        console.log("AlgorithmService payload:", payload);
         const customer_types_MAP = {
             hospital: "医院",
             mall: "商超",
@@ -15,16 +14,19 @@ class AlgorithmService {
             // 准备请求数据
             requestData = {
                 formData: {
-                    pvConfig: form_data.pv_config
-                        ? form_data.pv_config == "yes"
+                    userId: payload.userId,
+                    recordId: payload.recordId,
+                    rootId: payload.rootId,
+                    pvConfig: payload.pv_config
+                        ? payload.pv_config == "yes"
                             ? "有"
                             : "无"
                         : "不确定",
-                    capacity: form_data.pv_capacity,
-                    location: form_data.location, // 直接使用数组，不再字符串化
+                    capacity: payload.pv_capacity,
+                    location: payload.location, // 直接使用数组，不再字符串化
                     forecastRange:
-                        form_data.forecast_range === "4days" ? "D-4" : "D-1",
-                    customerType: customer_types_MAP[form_data.customer_type],
+                        payload.forecast_range === "4days" ? "D-4" : "D-1",
+                    customerType: customer_types_MAP[payload.customer_type],
                 },
                 loadData,
             };

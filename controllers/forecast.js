@@ -111,6 +111,7 @@ class ForecastController {
             /* 四、如果是基于历史数据的继续预测 ---------------------------------------------------------- */
 
             let mergeData = null; // 合并的数据
+            let root_id = null; // 继续预测时需找到根记录id作为参数传给算法
             if (F_isContinuePredict) {
                 const continueResult =
                     await ForecastController.handleContinuePrediction(
@@ -128,50 +129,13 @@ class ForecastController {
                 }
 
                 mergeData = continueResult.mergeData;
+                root_id = continueResult.rootId;
                 console.log(
-                    `数据合并成功，历史记录天数: ${continueResult.historyDays}, 新数据天数: ${loadData.length - 1}, 总天数: ${mergeData.length - 1}`
+                    `数据合并成功，历史记录天数: ${continueResult.historyDays}, 新数据天数: ${loadData.length - 1}, 总天数: ${mergeData.length - 1}, 根记录ID: ${root_id}`
                 );
             }
 
-            /* 五、调用算法服务进行预测 */
-            let predictionData;
-            try {
-                let param_2 = F_isContinuePredict ? mergeData : loadData; // 用户上传的负荷数据：如果不是继续预测，就是loadData本身没变，如果是继续预测，则为合并后的数据
-                predictionData = await AlgorithmService.predict(
-                    formData,
-                    param_2
-                );
-            } catch (algorithmError) {
-                return res.status(500).json({
-                    success: false,
-                    error: "预测处理失败",
-                    errorCode: "ALGORITHM_ERROR",
-                    details: algorithmError.message,
-                });
-            }
-
-            /* 六、生成结果Excel文件 */
-            let result;
-            try {
-                result = ExcelService.generate(predictionData);
-            } catch (generateError) {
-                return res.status(500).json({
-                    success: false,
-                    error: "结果生成失败",
-                    errorCode: "RESULT_GENERATION_ERROR",
-                    details: generateError.message,
-                });
-            }
-
-            // 处理用户ID - 新逻辑
-            if (formData.user_id) {
-                const user = await User.findById(formData.user_id); // 验证用户ID是否存在
-                if (!user) {
-                    console.warn(`用户ID ${formData.user_id} 在数据库中不存在`);
-                }
-            }
-
-            // 保存到数据库
+            // 提前创建pending状态记录
             const record = {
                 user_id: formData.user_id ? formData.user_id : null,
                 customer_type: formData.customer_type,
@@ -182,20 +146,67 @@ class ForecastController {
                 district: formData.location[2] || "",
                 forecast_range: formData.forecast_range,
                 uploadFilePath: file.path,
-                resultFilePath: result.filePath,
-                predictionData,
                 uploadDateRange: dateRange, // 时间范围
                 uploadData: loadData, // 解析后的数据
                 previous_record_id: F_isContinuePredict // 如果用户是基于历史数据继续预测的则要保存父链接
                     ? formData.previous_record_id
                     : null,
+                resultFilePath: null, //成功后会补上result.filePath
+                predictionData: null, //成功后会补上predictionData
             };
 
-            const recordId = await Record.create(record);
+            const recordId = await Record.create(record); // 生成暂存记录id
 
-            console.log("预测记录保存成功，ID:", recordId);
+            console.log("暂存预测记录ID:", recordId);
 
-            // 准备Excel文件信息
+            /* 五、调用算法服务进行预测 --------------------------------------------------------------------------------------------------------------------------------- */
+            const payload = {
+                ...formData,
+                userId: formData.user_id ? formData.user_id : null,
+                recordId,
+                rootId: F_isContinuePredict ? root_id : null,
+            };
+            let predictionData;
+            try {
+                let finalLoadData = F_isContinuePredict ? mergeData : loadData; // 用户上传的负荷数据：如果不是继续预测，就是loadData本身没变，如果是继续预测，则为合并后的数据
+                predictionData = await AlgorithmService.predict(
+                    payload,
+                    finalLoadData
+                );
+            } catch (algorithmError) {
+                await Record.deleteById(recordId); // 算法失败 -> 删除暂存记录
+                console.log("算法失败,删除记录:", recordId);
+                return res.status(500).json({
+                    success: false,
+                    error: "预测处理失败",
+                    errorCode: "ALGORITHM_ERROR",
+                    details: algorithmError.message,
+                });
+            }
+
+            /* 六、生成结果Excel文件 ---------------------------------------------------------------------------------------------------------------------------------  */
+            let resultExcel;
+            try {
+                resultExcel = ExcelService.generate(predictionData);
+            } catch (generateError) {
+                await Record.deleteById(recordId); // Excel生成失败 -> 删除记录
+                console.log("Excel生成失败,删除记录:", recordId);
+                return res.status(500).json({
+                    success: false,
+                    error: "结果生成失败",
+                    errorCode: "RESULT_GENERATION_ERROR",
+                    details: generateError.message,
+                });
+            }
+
+            // 算法调用与生成Excel成功：暂存记录 -> 正式记录
+            await Record.update(recordId, {
+                predictionData,
+                resultFilePath: resultExcel.filePath,
+            });
+            console.log("正式存入预测记录:", recordId);
+
+            // 返回给前端的关于Excel文件的信息
             const excelInfo = {
                 name: file.originalname,
                 size: Math.round(file.size / 1024), // 转换为KB
@@ -205,14 +216,15 @@ class ForecastController {
                     loadData,
                     F_isContinuePredict
                 ),
-                dateRange, // 返回给前端
+                dateRange,
             };
+
             // 返回响应
             res.json({
                 success: true,
                 recordId,
                 predictionData,
-                resultFileName: result.fileName,
+                resultFileName: resultExcel.fileName,
                 excelInfo, // 新增Excel文件信息
                 formData, // 原表单信息
             });
@@ -467,10 +479,35 @@ class ForecastController {
             // 7. 计算历史天数（数据行数，不包括表头）
             const historyDays = historyData.length - 1;
 
+            // 8. 查找根记录ID +++
+            let currentRecordId = previousRecordId; // 从previousRecordId开始找
+            let rootId = null;
+            while (currentRecordId) {
+                // 沿着previous_record_id链向上追溯
+                const record = await Record.findById(currentRecordId);
+                if (!record) {
+                    throw new Error(`记录 ${currentRecordId} 不存在`); // 记录不存在，抛出错误
+                }
+                // 如果当前记录没有父记录，则它就是根记录
+                if (!record.previous_record_id) {
+                    rootId = record.id; // 确保转换为字符串
+                    break;
+                }
+                // 继续向上追溯
+                currentRecordId = record.previous_record_id;
+            }
+            if (!rootId) {
+                throw new Error(
+                    `无法找到根记录，起始记录ID: ${previousRecordId}`
+                ); // 没找到根记录，抛出错误
+            }
+            console.log(`找到根记录ID: ${rootId}`);
+
             return {
                 success: true,
                 mergeData: mergedData,
                 historyDays,
+                rootId,
             };
         } catch (error) {
             console.error("继续预测处理失败:", error);
