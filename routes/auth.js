@@ -7,7 +7,6 @@ router.post("/register", AuthController.register);
 router.post("/login", AuthController.login);
 
 router.post("/send-code", AuthController.sendVerificationCode);
-router.post("/verify-code", AuthController.verifyCode);
 // 更新用户信息 - 需要进行用户登录认证
 router.use(AuthController.verifyToken);
 router.post("/update", AuthController.updateUser);

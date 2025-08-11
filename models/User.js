@@ -8,35 +8,22 @@ class User {
         );
         return rows[0];
     }
-    // static async create(userData) {
-    //     const { name, phone } = userData;
-    //     const company = userData.company ? userData.company : null;
-    //     const [result] = await pool.execute(
-    //         `INSERT INTO users (name, phone, company) VALUES (?, ?, ?)`,
-    //         [name, phone, company]
-    //     );
-
-    //     return {
-    //         id: result.insertId,
-    //         name,
-    //         phone,
-    //         company,
-    //     };
-    // }
     static async create(userData) {
-        const { name, phone, company } = userData;
+        const { name, phone } = userData;
+        const company = userData.company ? userData.company : null;
         const [result] = await pool.execute(
             `INSERT INTO users (name, phone, company) VALUES (?, ?, ?)`,
-            [name, phone, company || null] // 确保company为null
+            [name, phone, company]
         );
 
         return {
             id: result.insertId,
             name,
             phone,
-            company: company || null,
+            company,
         };
     }
+
     static async createOrUpdate(userData) {
         const { name, phone, company } = userData;
 

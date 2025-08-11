@@ -5,95 +5,6 @@ const verificationCache = require("../services/verificationCache");
 require("dotenv").config();
 
 class AuthController {
-    /**
-     * 用户注册接口
-     * 接收：name, phone, company
-     * 返回：token和用户信息
-     */
-    static async register(req, res) {
-        try {
-            const { name, phone, company } = req.body;
-
-            if (!name || !phone) {
-                return res.status(400).json({ error: "姓名、电话不能为空" });
-            }
-
-            // 检查电话是否已注册
-            const existingUser = await User.findByPhone(phone);
-            if (existingUser) {
-                return res.status(409).json({ error: "该电话号码已注册" });
-            }
-
-            // 创建新用户并获取完整用户对象
-            const user = await User.create({ name, phone, company });
-
-            if (!user) {
-                throw new Error("用户创建失败");
-            }
-
-            // 生成JWT token（无过期时间）
-            const token = jwt.sign(
-                { userId: user.id, phone: user.phone },
-                process.env.JWT_SECRET
-            );
-
-            res.json({
-                success: true,
-                token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    phone: user.phone,
-                    company: user.company,
-                },
-            });
-        } catch (error) {
-            console.error("注册失败:", error);
-            res.status(500).json({ error: "注册失败", details: error.message });
-        }
-    }
-    /**
-     * 用户登录第二步：确认登录并生成token
-     * 接收：name,phone
-     * 返回：token和用户信息
-     */
-    static async login(req, res) {
-        try {
-            const { name, phone } = req.body;
-
-            if (!name || !phone) {
-                return res.status(400).json({ error: "姓名、电话不能为空" });
-            }
-
-            // 查找用户
-            const user = await User.findByPhone(phone);
-
-            if (!user) {
-                return res.status(404).json({ error: "用户不存在" });
-            }
-
-            // 生成JWT token（无过期时间）
-            const token = jwt.sign(
-                { userId: user.id, phone: user.phone },
-                process.env.JWT_SECRET
-            );
-
-            res.json({
-                success: true,
-                token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    phone: user.phone,
-                    company: user.company,
-                },
-            });
-        } catch (error) {
-            console.error("登录失败:", error);
-            res.status(500).json({ error: "登录失败", details: error.message });
-        }
-    }
-
     static async verifyToken(req, res, next) {
         const token = req.headers.authorization;
 
@@ -179,17 +90,40 @@ class AuthController {
             });
         }
     }
+
     /**
-     * 发送验证码接口
-     * 接收：phone
+     * 发送验证码接口（区分登录和注册场景）
+     * 接收：phone, type (login/register)
      * 返回：发送结果
      */
     static async sendVerificationCode(req, res) {
-        console.log(req.body);
         try {
-            const { phone } = req.body;
-            if (!phone) {
-                return res.status(400).json({ error: "手机号不能为空" });
+            const { phone, type } = req.body;
+            if (!phone || !type) {
+                return res.status(400).json({ error: "手机号和类型不能为空" });
+            }
+
+            // 根据场景检查手机号状态
+            const userExists = await User.findByPhone(phone);
+
+            if (type === "login") {
+                // 登录场景：用户必须存在
+                if (!userExists) {
+                    return res.status(404).json({
+                        error: "用户不存在，请先注册",
+                        code: "USER_NOT_FOUND",
+                    });
+                }
+            } else if (type === "register") {
+                // 注册场景：用户不能存在
+                if (userExists) {
+                    return res.status(409).json({
+                        error: "该手机号已注册，请直接登录",
+                        code: "USER_ALREADY_EXISTS",
+                    });
+                }
+            } else {
+                return res.status(400).json({ error: "无效的类型参数" });
             }
 
             // 生成4位随机验证码
@@ -202,8 +136,8 @@ class AuthController {
                 return res.status(500).json({ error: "验证码发送失败" });
             }
 
-            // 存储验证码
-            verificationCache.storeCode(phone, code);
+            // 存储验证码（带类型信息）
+            verificationCache.storeCode(phone, code, type);
 
             res.json({ success: true, message: "验证码已发送" });
         } catch (error) {
@@ -214,12 +148,74 @@ class AuthController {
             });
         }
     }
+
     /**
-     * 验证码登录/注册接口
+     * 注册接口
      * 接收：phone, code
      * 返回：token和用户信息
      */
-    static async verifyCode(req, res) {
+    static async register(req, res) {
+        try {
+            const { phone, code, name, company } = req.body;
+
+            if (!phone || !code) {
+                return res
+                    .status(400)
+                    .json({ error: "手机号和验证码不能为空" });
+            }
+
+            // 验证验证码（检查注册场景）
+            if (!verificationCache.verifyCode(phone, code, "register")) {
+                return res.status(401).json({ error: "验证码无效或已过期" });
+            }
+
+            // 再次检查用户是否已存在（防止并发注册）
+            const existingUser = await User.findByPhone(phone);
+            if (existingUser) {
+                return res
+                    .status(409)
+                    .json({ error: "该手机号已注册，请直接登录" });
+            }
+
+            // 使用手机尾号后4位作为默认用户名
+            const defaultName = phone.slice(-4);
+
+            // 创建新用户
+            const user = await User.create({
+                phone,
+                name: name ? name : defaultName,
+                company: company ? company : null,
+            });
+
+            // 生成JWT token
+            const token = jwt.sign(
+                { userId: user.id, phone: user.phone },
+                process.env.JWT_SECRET
+            );
+
+            res.json({
+                success: true,
+                message: "注册成功",
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    phone: user.phone,
+                    company: user.company,
+                },
+            });
+        } catch (error) {
+            console.error("注册失败:", error);
+            res.status(500).json({ error: "注册失败", details: error.message });
+        }
+    }
+
+    /**
+     * 登录接口
+     * 接收：phone, code
+     * 返回：token和用户信息
+     */
+    static async login(req, res) {
         try {
             const { phone, code } = req.body;
 
@@ -229,21 +225,18 @@ class AuthController {
                     .json({ error: "手机号和验证码不能为空" });
             }
 
-            // 验证验证码
-            if (!verificationCache.verifyCode(phone, code)) {
+            // 验证验证码（检查登录场景）
+            if (!verificationCache.verifyCode(phone, code, "login")) {
                 return res.status(401).json({ error: "验证码无效或已过期" });
             }
 
-            // 查找用户或创建新用户
-            let user = await User.findByPhone(phone);
+            // 查找用户
+            const user = await User.findByPhone(phone);
 
             if (!user) {
-                // 使用手机尾号后4位作为默认用户名
-                const defaultName = phone.slice(-4);
-                user = await User.create({
-                    name: defaultName,
-                    phone,
-                    company: null,
+                return res.status(404).json({
+                    error: "用户不存在，请先注册",
+                    code: "USER_NOT_FOUND",
                 });
             }
 
@@ -255,6 +248,7 @@ class AuthController {
 
             res.json({
                 success: true,
+                message: "登录成功",
                 token,
                 user: {
                     id: user.id,
@@ -264,11 +258,8 @@ class AuthController {
                 },
             });
         } catch (error) {
-            console.error("验证码登录失败:", error);
-            res.status(500).json({
-                error: "验证码登录失败",
-                details: error.message,
-            });
+            console.error("登录失败:", error);
+            res.status(500).json({ error: "登录失败", details: error.message });
         }
     }
 }
