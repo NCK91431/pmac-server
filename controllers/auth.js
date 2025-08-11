@@ -1,5 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const smsService = require("../services/smsService");
+const verificationCache = require("../services/verificationCache");
 require("dotenv").config();
 
 class AuthController {
@@ -173,6 +175,98 @@ class AuthController {
             console.error("更新用户信息失败:", error);
             res.status(500).json({
                 error: "更新用户信息失败",
+                details: error.message,
+            });
+        }
+    }
+    /**
+     * 发送验证码接口
+     * 接收：phone
+     * 返回：发送结果
+     */
+    static async sendVerificationCode(req, res) {
+        console.log(req.body);
+        try {
+            const { phone } = req.body;
+            if (!phone) {
+                return res.status(400).json({ error: "手机号不能为空" });
+            }
+
+            // 生成4位随机验证码
+            const code = Math.floor(1000 + Math.random() * 9000).toString();
+
+            // 发送短信
+            const sent = await smsService.sendVerificationCode(phone, code);
+
+            if (!sent) {
+                return res.status(500).json({ error: "验证码发送失败" });
+            }
+
+            // 存储验证码
+            verificationCache.storeCode(phone, code);
+
+            res.json({ success: true, message: "验证码已发送" });
+        } catch (error) {
+            console.error("发送验证码失败:", error);
+            res.status(500).json({
+                error: "发送验证码失败",
+                details: error.message,
+            });
+        }
+    }
+    /**
+     * 验证码登录/注册接口
+     * 接收：phone, code
+     * 返回：token和用户信息
+     */
+    static async verifyCode(req, res) {
+        try {
+            const { phone, code } = req.body;
+
+            if (!phone || !code) {
+                return res
+                    .status(400)
+                    .json({ error: "手机号和验证码不能为空" });
+            }
+
+            // 验证验证码
+            if (!verificationCache.verifyCode(phone, code)) {
+                return res.status(401).json({ error: "验证码无效或已过期" });
+            }
+
+            // 查找用户或创建新用户
+            let user = await User.findByPhone(phone);
+
+            if (!user) {
+                // 使用手机尾号后4位作为默认用户名
+                const defaultName = phone.slice(-4);
+                user = await User.create({
+                    name: defaultName,
+                    phone,
+                    company: null,
+                });
+            }
+
+            // 生成JWT token
+            const token = jwt.sign(
+                { userId: user.id, phone: user.phone },
+                process.env.JWT_SECRET
+            );
+
+            res.json({
+                success: true,
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    phone: user.phone,
+                    company: user.company,
+                },
+            });
+        } catch (error) {
+            console.error("验证码登录失败:", error);
+            res.status(500).json({
+                error: "验证码登录失败",
                 details: error.message,
             });
         }

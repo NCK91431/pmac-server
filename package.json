@@ -23,6 +23,7 @@
     "prettier": "^3.6.2"
   },
   "dependencies": {
+    "@alicloud/pop-core": "^1.8.0",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
     "china-division": "^2.7.0",
