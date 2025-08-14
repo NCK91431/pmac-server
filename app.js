@@ -2,8 +2,13 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+/* 负荷预测 */
 const forecastRouter = require("./routes/forecast");
 const historyRouter = require("./routes/history");
+/* 光储定容 */
+const lightRouter = require("./routes/light");
+const lightHistoryRouter = require("./routes/light_history");
+/* 获取省市区列表 */
 const locationRouter = require("./routes/location");
 const authRouter = require("./routes/auth"); // 新增认证路由
 const db = require("./config/db");
@@ -61,6 +66,8 @@ app.use((err, req, res, next) => {
 // 路由
 app.use("/api/forecast", forecastRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/light_forecast", lightRouter);
+app.use("/api/light_history", lightHistoryRouter);
 app.use("/api/locationtree", locationRouter);
 app.use("/api/auth", authRouter); // 新增认证路由
 

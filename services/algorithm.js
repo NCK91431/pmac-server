@@ -54,6 +54,46 @@ class AlgorithmService {
             });
         }
     }
+
+    /* 光储定容 */
+    static async lightPredict(formData, dayLoadData) {
+        // dayLoadData 是24个数值的数组
+
+        try {
+            const requestData = {
+                storage_cost: Number(formData.storage_cost),
+                pv_cost: Number(formData.pv_cost),
+                loadData: dayLoadData, // 直接传递24小时负荷数据数组
+            };
+            console.log("*光储定容算法接口请求参数 ->", requestData);
+            const response = await axios.post(
+                `http://125.88.36.152:55555/PV_Battery_Sizing/V1.0`,
+                requestData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("*光储定容算法接口返回 ->", response.data);
+
+            // const response = {
+            //     data: {
+            //         PV_cap_kw: 150.5,
+            //         ESS_cap_kwh: 200.0,
+            //         P_max_charge_kw: 50.0,
+            //         daily_operation_cost: 120.75,
+            //         annual_savings: 45000.0,
+            //         investment_cost: 180000.0,
+            //     },
+            // };
+
+            return response.data;
+        } catch (error) {
+            console.error("调用光储定容算法接口失败:", error.message);
+            throw error;
+        }
+    }
 }
 
 module.exports = AlgorithmService;
