@@ -100,6 +100,53 @@ class ExcelService {
             filePath,
         };
     }
+
+    static elec_generate(algorithm_result) {
+        console.log("algorithm_result->", algorithm_result);
+        const { date, values } = algorithm_result;
+
+        // 准备Excel数据
+        const data = [];
+
+        // 添加表头
+        const timePoints = [];
+        for (let hour = 0; hour < 24; hour++) {
+            for (const minute of ["00", "15", "30", "45"]) {
+                timePoints.push(`${hour}:${minute}`);
+            }
+        }
+        const header = ["日期"].concat(timePoints);
+        data.push(header);
+
+        // 添加数据行
+        const row = [date];
+        values.forEach((v) => row.push(v));
+        data.push(row);
+
+        console.log("预测结果数据准备：", data);
+
+        // 构建Excel文件
+        const buffer = xlsx.build([{ name: "负荷预测结果", data }]);
+
+        // 使用项目根目录创建结果目录
+        const rootDir = process.cwd();
+        const resultDir = path.join(rootDir, "results");
+        // 确保结果目录存在
+        if (!fs.existsSync(resultDir)) {
+            fs.mkdirSync(resultDir, { recursive: true });
+        }
+
+        // 保存文件
+        const fileName = `forecast-result-${Date.now()}.xlsx`;
+        const filePath = path.join(resultDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+
+        return {
+            buffer,
+            fileName,
+            filePath,
+        };
+    }
 }
 
 module.exports = ExcelService;

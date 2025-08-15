@@ -5,6 +5,9 @@ const morgan = require("morgan");
 /* 负荷预测 */
 const forecastRouter = require("./routes/forecast");
 const historyRouter = require("./routes/history");
+/* 光伏发电预测 */
+const elecRouter = require("./routes/elec");
+const elecHistoryRouter = require("./routes/elec_history");
 /* 光储定容 */
 const lightRouter = require("./routes/light");
 const lightHistoryRouter = require("./routes/light_history");
@@ -66,6 +69,8 @@ app.use((err, req, res, next) => {
 // 路由
 app.use("/api/forecast", forecastRouter);
 app.use("/api/history", historyRouter);
+app.use("/api/elec_forecast", elecRouter);
+app.use("/api/elec_history", elecHistoryRouter);
 app.use("/api/light_forecast", lightRouter);
 app.use("/api/light_history", lightHistoryRouter);
 app.use("/api/locationtree", locationRouter);
