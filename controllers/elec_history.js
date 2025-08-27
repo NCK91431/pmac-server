@@ -27,7 +27,7 @@ class ElecHistoryController {
         records.forEach((record) => {
             recordMap[record.id] = {
                 id: record.id,
-                // location: record.location,
+                location: record.location,
                 pv_capacity: record.pv_capacity,
                 created_at: record.created_at,
                 upload_date_range: record.upload_info.date_range,
