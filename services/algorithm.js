@@ -23,7 +23,7 @@ class AlgorithmService {
                             : "无"
                         : "不确定",
                     pvCapacity: payload.pv_capacity,
-                    location: payload.location, // 直接使用数组，不再字符串化
+                    location: JSON.parse(payload.location),
                     forecastRange:
                         payload.forecast_range === "4days" ? "D-4" : "D-1",
                     customerType: customer_types_MAP[payload.customer_type],

@@ -9,10 +9,6 @@ const { addDays, isAfter, parseISO, formatISO } = require("date-fns");
 
 class ForecastController {
     static async processForecast(req, res) {
-        if (req.body.location && typeof req.body.location == "string") {
-            const location_str = req.body.location;
-            req.body.location = JSON.parse(location_str); //"广东省,珠海市,香洲区" -> ['广东省','珠海市','香洲区']
-        }
         try {
             const formData = req.body;
             const file = req.file;
@@ -142,9 +138,7 @@ class ForecastController {
                 customer_type: formData.customer_type || null,
                 pv_config: formData.pv_config || null,
                 pv_capacity: formData.pv_capacity || null,
-                province: formData.location[0] || "",
-                city: formData.location[1] || "",
-                district: formData.location[2] || "",
+                location: formData.location,
                 forecast_range: formData.forecast_range,
                 uploadFilePath: file.path,
                 uploadDateRange: dateRange, // 时间范围
