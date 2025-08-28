@@ -26,6 +26,7 @@ class HistoryController {
         records.forEach((record) => {
             recordMap[record.id] = {
                 id: record.id,
+                mode: record.mode,
                 customer_type: record.customer_type,
                 location: [record.province, record.city, record.district],
                 forecast_range: record.forecast_range,
@@ -80,6 +81,7 @@ class HistoryController {
             // 添加树状结构需要的字段
             const formattedRecord = {
                 id: record.id,
+                mode: record.mode,
                 customer_type: record.customer_type,
                 pv_config: record.pv_config,
                 pv_capacity: record.pv_capacity,

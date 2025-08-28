@@ -138,9 +138,10 @@ class ForecastController {
             // 提前创建pending状态记录
             const record = {
                 user_id: formData.user_id ? formData.user_id : null,
-                customer_type: formData.customer_type,
-                pv_config: formData.pv_config,
-                pv_capacity: formData.pv_capacity,
+                mode: formData.mode,
+                customer_type: formData.customer_type || null,
+                pv_config: formData.pv_config || null,
+                pv_capacity: formData.pv_capacity || null,
                 province: formData.location[0] || "",
                 city: formData.location[1] || "",
                 district: formData.location[2] || "",
@@ -154,7 +155,7 @@ class ForecastController {
                 resultFilePath: null, //成功后会补上result.filePath
                 predictionData: null, //成功后会补上predictionData
             };
-
+            console.log("创建预测记录，模式:", record.mode);
             const recordId = await Record.create(record); // 生成暂存记录id
 
             console.log("暂存预测记录ID:", recordId);
