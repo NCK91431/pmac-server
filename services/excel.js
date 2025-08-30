@@ -61,7 +61,7 @@ class ExcelService {
     }
 
     static generate(predictionData) {
-        const { dates, values } = predictionData;
+        const { date, values } = predictionData;
 
         // 准备Excel数据
         const data = [];
@@ -73,10 +73,9 @@ class ExcelService {
         data.push(header);
 
         // 添加数据行
-        dates.forEach((date, index) => {
-            const row = [date].concat(values[index]);
-            data.push(row);
-        });
+        const row = [date];
+        values.forEach((v) => row.push(v));
+        data.push(row);
 
         // 构建Excel文件
         const buffer = xlsx.build([{ name: "负荷预测结果", data }]);

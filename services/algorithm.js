@@ -43,8 +43,8 @@ class AlgorithmService {
             console.log("算法接口返回的响应数据", response.data);
             // 转换数据格式
             const result = {
-                dates: [response.data.date], // 将单个日期转为数组
-                values: [response.data.predictionData], // 将预测数据转为二维数组
+                date: response.data.date,
+                values: response.data.predictionData,
             };
             return result;
         } catch (error) {
