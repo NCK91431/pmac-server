@@ -17,19 +17,25 @@ class AlgorithmService {
                     userId: payload.userId,
                     recordId: payload.recordId,
                     rootId: payload.rootId,
-                    pvConfig: payload.pv_config
-                        ? payload.pv_config == "yes"
-                            ? "有"
-                            : "无"
-                        : "不确定",
-                    pvCapacity: payload.pv_capacity,
+
                     location: JSON.parse(payload.location),
-                    forecastRange:
+                    forecastType:
                         payload.forecast_range === "4days" ? "D-4" : "D-1",
-                    customerType: customer_types_MAP[payload.customer_type],
+                    customerType: "总负荷",
                 },
                 loadData,
             };
+            if (payload.mode == "S") {
+                requestData.formData.customerType =
+                    customer_types_MAP[payload.customer_type];
+                requestData.formData.pvConfig = payload.pv_config
+                    ? payload.pv_config == "yes"
+                        ? "有"
+                        : "无"
+                    : "不确定";
+                requestData.formData.pvCapacity = payload.pv_capacity;
+            }
+            console.log("负荷预测算法接口请求参数 ->", requestData.formData);
             // 调用算法部门接口
             const response = await axios.post(
                 `http://125.88.36.152:15010/loadForecast/V1`,
@@ -42,10 +48,7 @@ class AlgorithmService {
             );
             console.log("算法接口返回的响应数据", response.data);
             // 转换数据格式
-            const result = {
-                date: response.data.date,
-                values: response.data.predictionData,
-            };
+            const result = response.data;
             return result;
         } catch (error) {
             console.error("调用算法接口失败:", {
@@ -55,6 +58,34 @@ class AlgorithmService {
         }
     }
 
+    static async compare(payload) {
+        try {
+            console.log("回测算法接口请求参数 ->", {
+                formData: payload.formData,
+                selectDate: payload.selectDate,
+                loadData: payload.loadData[0],
+            });
+            // 调用算法部门接口
+            const response = await axios.post(
+                `http://125.88.36.152:15010/loadForecast_validate/V1`,
+                payload,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("回测算法返回的响应数据", response.data);
+            // 转换数据格式
+            const result = response.data;
+            return result;
+        } catch (error) {
+            console.error("调用回测算法接口失败:", {
+                message: error.message,
+                url: `http://125.88.36.152:15010/loadForecast_validate/V1`,
+            });
+        }
+    }
     /* 光伏发电预测 */
     static async elecPredict(payload, loadData) {
         console.log("AlgorithmService.elecPredict payload:", payload);

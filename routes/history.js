@@ -12,5 +12,7 @@ router.use(AuthController.verifyToken);
 
 router.get("/", HistoryController.listRecords);
 router.get("/:id", HistoryController.getRecordDetail);
+router.get("/merge/:id", HistoryController.mergeHistory);
+router.post("/compare", HistoryController.getCompare);
 router.delete("/:id", HistoryController.deleteRecord); // 新增删除路由
 module.exports = router;

@@ -161,13 +161,10 @@ class ForecastController {
                 recordId,
                 rootId: F_isContinuePredict ? root_id : null,
             };
-            let predictionData;
+            let result;
             try {
                 let finalLoadData = F_isContinuePredict ? mergeData : loadData; // 用户上传的负荷数据：如果不是继续预测，就是loadData本身没变，如果是继续预测，则为合并后的数据
-                predictionData = await AlgorithmService.predict(
-                    payload,
-                    finalLoadData
-                );
+                result = await AlgorithmService.predict(payload, finalLoadData);
             } catch (algorithmError) {
                 await Record.deleteById(recordId); // 算法失败 -> 删除暂存记录
                 console.log("算法失败,删除记录:", recordId);
@@ -181,8 +178,12 @@ class ForecastController {
 
             /* 六、生成结果Excel文件 ---------------------------------------------------------------------------------------------------------------------------------  */
             let resultExcel;
+            const excel_payload = {
+                date: result.date,
+                values: result.predictionData,
+            };
             try {
-                resultExcel = ExcelService.generate(predictionData);
+                resultExcel = ExcelService.generate(excel_payload);
             } catch (generateError) {
                 await Record.deleteById(recordId); // Excel生成失败 -> 删除记录
                 console.log("Excel生成失败,删除记录:", recordId);
@@ -196,7 +197,7 @@ class ForecastController {
 
             // 算法调用与生成Excel成功：暂存记录 -> 正式记录
             await Record.update(recordId, {
-                predictionData,
+                predictionData: result,
                 resultFilePath: resultExcel.filePath,
             });
             console.log("正式存入预测记录:", recordId);
@@ -218,7 +219,7 @@ class ForecastController {
             res.json({
                 success: true,
                 recordId,
-                predictionData,
+                result,
                 resultFileName: resultExcel.fileName,
                 excelInfo, // 新增Excel文件信息
                 formData, // 原表单信息

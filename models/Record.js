@@ -231,6 +231,48 @@ class Record {
         );
         return result.affectedRows;
     }
+
+    // 在Record.js中添加以下方法
+    static async getMergedDataWithRange(recordId) {
+        // 获取当前记录
+        const record = await this.findById(recordId);
+        if (!record) {
+            throw new Error(`记录 ${recordId} 不存在`);
+        }
+
+        // 获取合并数据
+        const mergedData = await this.getMergedData(recordId);
+
+        // 获取日期范围
+        let dateRange = record.upload_date_range;
+        if (typeof dateRange === "string") {
+            dateRange = JSON.parse(dateRange);
+        }
+
+        // 递归获取根记录的起始日期
+        let currentRecordId = recordId;
+        let startDate = null;
+
+        while (currentRecordId) {
+            const currentRecord = await this.findById(currentRecordId);
+            if (!currentRecord) break;
+
+            let currentDateRange = currentRecord.upload_date_range;
+            if (typeof currentDateRange === "string") {
+                currentDateRange = JSON.parse(currentDateRange);
+            }
+
+            startDate = currentDateRange[0]; // 更新为更早的起始日期
+
+            // 继续向上追溯
+            currentRecordId = currentRecord.previous_record_id;
+        }
+
+        return {
+            mergeRange: [startDate, dateRange[1]], // [起始日期, 结束日期]
+            mergedData: mergedData,
+        };
+    }
 }
 
 module.exports = Record;

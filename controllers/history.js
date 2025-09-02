@@ -1,5 +1,6 @@
 /* 历史记录控制器  */
 const Record = require("../models/Record");
+const AlgorithmService = require("../services/algorithm");
 const path = require("path");
 const fs = require("fs");
 
@@ -91,8 +92,9 @@ class HistoryController {
                         : record.upload_date_range
                     : [],
                 prediction_date: record.prediction_data.date,
-                prediction_data: record.prediction_data,
+                result: record.prediction_data,
                 previous_record_id: record.previous_record_id,
+                upload_data: record.upload_data,
             };
 
             res.json(formattedRecord);
@@ -177,6 +179,88 @@ class HistoryController {
             console.error("删除记录失败:", error);
             res.status(500).json({
                 error: "删除记录失败",
+                details: error.message,
+            });
+        }
+    }
+
+    static async getCompare(req, res) {
+        console.log("HistoryController.getCompare req.body:", req.body);
+        const customer_types_MAP = {
+            hospital: "医院",
+            mall: "商超",
+            discrete: "离散工业",
+            continuous: "连续工业",
+        };
+        const { recordId, selectDate, userId } = req.body;
+        const record = await Record.findByIdAndUserId(recordId, userId);
+        const payload = {
+            formData: {
+                userId,
+                recordId,
+                rootId: recordId,
+                pvConfig: record.pv_config,
+                pvCapacity: record.pv_capacity,
+                location: record.location,
+                forecastType: record.forecast_range === "4days" ? "D-4" : "D-1",
+                customerType:
+                    record.mode == "T"
+                        ? "总负荷"
+                        : customer_types_MAP[record.customer_type],
+            },
+            selectDate,
+            loadData: record.upload_data,
+        };
+        try {
+            const result = await AlgorithmService.compare(payload);
+            res.json({
+                success: true,
+                result,
+            });
+        } catch (algorithmError) {
+            return res.status(500).json({
+                success: false,
+                error: "回测算法调用失败",
+                errorCode: "ALGORITHM_ERROR",
+                details: algorithmError.message,
+            });
+        }
+    }
+    static async mergeHistory(req, res) {
+        const { id } = req.params;
+        console.log("HistoryController.mergeHistory req.query:", req.query);
+        try {
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    error: "缺少record_id参数",
+                });
+            }
+            // 验证记录是否属于当前用户
+            const record = await Record.findByIdAndUserId(id, req.user.id);
+            if (!record) {
+                return res.status(404).json({
+                    success: false,
+                    error: "记录不存在或无权访问",
+                });
+            }
+
+            // 获取合并数据和时间范围
+            const result = await Record.getMergedDataWithRange(id);
+
+            res.json({
+                success: true,
+                result: {
+                    record_id: id,
+                    merge_range: result.mergeRange,
+                    merged_data: result.mergedData,
+                },
+            });
+        } catch (error) {
+            console.error("获取合并数据失败:", error);
+            res.status(500).json({
+                success: false,
+                error: "获取合并数据失败",
                 details: error.message,
             });
         }
