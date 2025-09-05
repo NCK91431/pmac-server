@@ -5,6 +5,7 @@ const morgan = require("morgan");
 /* 负荷预测 */
 const forecastRouter = require("./routes/forecast");
 const historyRouter = require("./routes/history");
+const fileInfoRouter = require("./routes/fileinfo");
 /* 光伏发电预测 */
 const elecRouter = require("./routes/elec");
 const elecHistoryRouter = require("./routes/elec_history");
@@ -67,6 +68,7 @@ app.use((err, req, res, next) => {
     });
 });
 // 路由
+app.use("/api/fileinfo", fileInfoRouter);
 app.use("/api/forecast", forecastRouter);
 app.use("/api/history", historyRouter);
 app.use("/api/elec_forecast", elecRouter);
