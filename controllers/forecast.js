@@ -62,9 +62,6 @@ class ForecastController {
                 });
             }
 
-            // 提取时间范围
-            let dateRange = ForecastController.extractDateRange(loadData);
-
             /* 三、文件格式正确？---------------------------------------------------------- */
             // 1.基础验证（行数、列数）
             const base_result = ForecastController.baseValidate(loadData);
@@ -131,6 +128,8 @@ class ForecastController {
                 );
             }
 
+            // 提取时间范围
+            let dateRange = ForecastController.extractDateRange(loadData);
             // 提前创建pending状态记录
             const record = {
                 user_id: formData.user_id ? formData.user_id : null,
