@@ -77,8 +77,8 @@ function validateDateContinuity(dates) {
     };
 }
 /* 表格体数据验证（每行行首、每行数据类型） */
-function validateExcel(data) {
-    const minDays = 30; // 根据是否为继续预测，设置不同的最小天数要求
+function validateExcel(data, isContinuePredict = false) {
+    const minDays = isContinuePredict ? 1 : 30; // 根据是否为继续预测，设置不同的最小天数要求
     const minRows = minDays + 1; // 加上表头行（第1行）
     if (data.length < minRows) {
         return {
@@ -160,6 +160,10 @@ function baseValidate(data) {
 router.post("/", upload.single("file"), async (req, res) => {
     try {
         const file = req.file;
+        const isContinue = req.body.isContinue == "1";
+        file.originalname = Buffer.from(file.originalname, "binary").toString(
+            "utf8"
+        );
         /* 1.文件存在？ */
         if (!file) {
             return res.status(400).json({
@@ -212,7 +216,7 @@ router.post("/", upload.single("file"), async (req, res) => {
             });
         }
         // (3-2)表格体数据验证（每行行首、每行数据类型）
-        const rows_result = validateExcel(loadData);
+        const rows_result = validateExcel(loadData, isContinue);
         if (!rows_result.valid) {
             return res.status(400).json({
                 success: false,
