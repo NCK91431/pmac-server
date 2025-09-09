@@ -12,6 +12,8 @@ router.use(AuthController.verifyToken);
 
 router.get("/", ElecHistoryController.listRecords);
 router.get("/:id", ElecHistoryController.getRecordDetail);
+router.get("/merge/:id", ElecHistoryController.mergeHistory);
+router.post("/compare", ElecHistoryController.getCompare);
 router.delete("/:id", ElecHistoryController.deleteRecord);
 
 module.exports = router;

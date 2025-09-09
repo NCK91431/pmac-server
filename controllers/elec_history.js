@@ -2,6 +2,7 @@
 const Elec = require("../models/Elec");
 const path = require("path");
 const fs = require("fs");
+const AlgorithmService = require("../services/algorithm");
 
 class ElecHistoryController {
     static async listRecords(req, res) {
@@ -145,6 +146,72 @@ class ElecHistoryController {
         } catch (error) {
             console.error("删除光伏发电预测记录失败:", error);
             res.status(500).json({ error: "删除记录失败" });
+        }
+    }
+
+    static async getCompare(req, res) {
+        const { recordId, selectDate, userId } = req.body;
+        const record = await Elec.findByIdAndUserId(recordId, userId);
+        const payload = {
+            formData: {
+                userId,
+                recordId,
+                rootId: recordId,
+                pvCapacity: record.pv_capacity,
+                location: record.location,
+            },
+            selectDate,
+            loadData: record.upload_info.data,
+        };
+        try {
+            const result = await AlgorithmService.elecCompare(payload);
+            res.json({
+                success: true,
+                result,
+            });
+        } catch (algorithmError) {
+            return res.status(500).json({
+                success: false,
+                error: "回测算法调用失败",
+                errorCode: "ALGORITHM_ERROR",
+                details: algorithmError.message,
+            });
+        }
+    }
+    static async mergeHistory(req, res) {
+        const { id } = req.params;
+        try {
+            if (!id) {
+                return res.status(400).json({
+                    success: false,
+                    error: "缺少record_id参数",
+                });
+            }
+            // 验证记录是否属于当前用户
+            const record = await Elec.findByIdAndUserId(id, req.user.id);
+            if (!record) {
+                return res.status(404).json({
+                    success: false,
+                    error: "记录不存在或无权访问",
+                });
+            }
+
+            // 获取合并数据和时间范围
+            const result = await Elec.getMergedDataWithRange(id);
+            res.json({
+                success: true,
+                result: {
+                    record_id: id,
+                    merge_range: result.mergeRange,
+                    merged_data: result.mergedData,
+                },
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: "获取合并数据失败",
+                details: error.message,
+            });
         }
     }
 }

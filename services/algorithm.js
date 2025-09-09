@@ -88,8 +88,6 @@ class AlgorithmService {
     }
     /* 光伏发电预测 */
     static async elecPredict(payload, loadData) {
-        console.log("AlgorithmService.elecPredict payload:", payload);
-
         let requestData;
         try {
             // 准备请求数据
@@ -98,15 +96,14 @@ class AlgorithmService {
                     userId: payload.userId,
                     recordId: payload.recordId,
                     rootId: payload.rootId,
-                    capacity: payload.pv_capacity,
+                    pvCapacity: payload.pv_capacity,
                     location: payload.location,
                 },
                 loadData,
             };
-            /*  
             // 调用算法部门接口
             const response = await axios.post(
-                `http://10.0.110.169:5011/pvForecast/V1`,
+                `http://125.88.36.152:15020/pvForecast/V1`,
                 requestData,
                 {
                     headers: {
@@ -114,35 +111,47 @@ class AlgorithmService {
                     },
                 }
             );
-            console.log("算法接口返回的响应数据", response.data);
             // 转换数据格式
             const result = {
                 date: response.data.date, // 预测的日期
-                values: response.data.predictionData, // 预测结果数组
+                values: response.data.pred, // 预测结果数组
+                cityWeatherForecast: response.data.cityWeatherForecast, // 天气信息
+                modelMetrics: response.data.modelMetrics, // 模型评估信息
             };
             return result;
-			*/
-
-            /* 测试用：生成一个包含96个0-500之间随机数的数组*/
-            const generateRandomArray = () => {
-                const result = [];
-                // 生成96个随机数
-                for (let i = 0; i < 96; i++) {
-                    // 生成0-500之间的随机整数（包括0和500）
-                    const randomNum = Math.floor(Math.random() * 501);
-                    result.push(randomNum);
-                }
-                return result;
-            };
-            const test_result = {
-                date: "2025-08-15",
-                values: generateRandomArray(),
-            };
-            return test_result;
         } catch (error) {
             console.error("调用算法接口失败:", {
                 message: error.message,
                 url: `http://125.88.36.152:15010/loadForecast/V1`,
+            });
+        }
+    }
+
+    static async elecCompare(payload) {
+        try {
+            console.log("光伏发电:回测算法接口请求参数 ->", {
+                formData: payload.formData,
+                selectDate: payload.selectDate,
+                loadData: payload.loadData[0],
+            });
+            // 调用算法部门接口
+            const response = await axios.post(
+                `http://125.88.36.152:15020/pvForecast_validate/V1`,
+                payload,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            console.log("光伏发电:回测算法返回的响应数据", response.data);
+            // 转换数据格式
+            const result = response.data;
+            return result;
+        } catch (error) {
+            console.error("调用回测算法接口失败:", {
+                message: error.message,
+                url: `http://125.88.36.152:15020/pvForecast_validate/V1`,
             });
         }
     }
