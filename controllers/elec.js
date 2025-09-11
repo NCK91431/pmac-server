@@ -378,58 +378,12 @@ class ElecController {
             dates.push(parseISO(row[0])); // 收集日期（已通过格式验证）
         }
 
-        // 新增：验证日期连续性
-        const dateContinuityResult =
-            ElecController.validateDateContinuity(dates);
-        if (!dateContinuityResult.valid) {
-            return {
-                valid: false,
-                message: dateContinuityResult.message,
-            };
-        }
-
         return {
             valid: true,
             message: "表格体数据验证通过",
         };
     }
 
-    /**
-     * 验证日期连续性和顺序
-     * @param {Date[]} dates - 日期对象数组
-     * @returns {object} 验证结果
-     */
-    static validateDateContinuity(dates) {
-        // 检查日期是否按时间顺序排列且连续
-        for (let i = 1; i < dates.length; i++) {
-            const prevDate = dates[i - 1];
-            const currentDate = dates[i];
-
-            // 检查日期是否乱序
-            if (isAfter(prevDate, currentDate)) {
-                return {
-                    valid: false,
-                    message: `日期顺序错误：${formatISO(prevDate, { representation: "date" })} 不应在 ${formatISO(currentDate, { representation: "date" })} 之后`,
-                };
-            }
-
-            // 检查日期是否连续（当前日期应为前一天的后一天）
-            const expectedNextDate = addDays(prevDate, 1);
-            if (
-                formatISO(currentDate, { representation: "date" }) !==
-                formatISO(expectedNextDate, { representation: "date" })
-            ) {
-                return {
-                    valid: false,
-                    message: `日期不连续：${formatISO(prevDate, { representation: "date" })} 和 ${formatISO(currentDate, { representation: "date" })} 之间存在间隔`,
-                };
-            }
-        }
-        return {
-            valid: true,
-            message: "日期连续性验证通过",
-        };
-    }
     // 新增方法：计算Excel统计信息
     static calculateExcelStats(loadData, isContinuePredict = false) {
         // 确保数据有效
