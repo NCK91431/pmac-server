@@ -248,10 +248,12 @@ class ElecController {
         // 2. 列数
         const header = data[0];
         if (!header || header.length < 97) {
-            console.error("表头列数不足，应为97列（日期+24小时）");
+            console.error(
+                "表头列数不足，应为97列（日期+数据力度15分钟的数据）"
+            );
             return {
                 valid: false,
-                message: "列数不正确（应为97列：日期+24小时）",
+                message: "列数不正确（应为97列：日期+数据力度15分钟的数据）",
             };
         }
         return {
@@ -351,7 +353,7 @@ class ElecController {
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
         for (let i = 1; i < data.length; i++) {
             const row = data[i];
-            // 检查某行是否有24个数据
+            // 检查某行是否有97个数据
             if (row.length !== 97) {
                 return {
                     valid: false,
@@ -407,8 +409,8 @@ class ElecController {
                 if (days < 90) {
                     status = `已验证（警告：数据天数少于90天，影响预测效果）`;
                 }
-            } else if (pointsPerDay !== 24) {
-                status = `已验证（警告：时间粒度不是24小时）`;
+            } else if (pointsPerDay !== 96) {
+                status = `已验证（警告：时间粒度不是15分钟）`;
             }
         }
         return {
