@@ -370,7 +370,7 @@ class ElecController {
             // 检查负荷值
             for (let j = 1; j < 97; j++) {
                 const value = row[j];
-                if (typeof value !== "number" || isNaN(value) || value < 0) {
+                if (typeof value !== "number" || isNaN(value)) {
                     return {
                         valid: false,
                         message: `第${i + 1}行第${j + 1}列负荷值无效: ${value}`,
