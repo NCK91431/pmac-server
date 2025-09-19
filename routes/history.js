@@ -3,9 +3,11 @@ const express = require("express");
 const router = express.Router();
 const HistoryController = require("../controllers/history");
 const AuthController = require("../controllers/auth");
+const LoadExample = require("./load_example");
 
 // 文件下载接口不需要认证
 router.get("/:id/download/:type", HistoryController.downloadFile);
+router.use("/example", LoadExample);
 
 // 其他历史记录接口需要认证
 router.use(AuthController.verifyToken);

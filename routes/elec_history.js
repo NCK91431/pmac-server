@@ -3,9 +3,11 @@ const express = require("express");
 const router = express.Router();
 const ElecHistoryController = require("../controllers/elec_history");
 const AuthController = require("../controllers/auth");
+const ElecExample = require("./elec_example");
 
 // 文件下载不需要认证
 router.get("/:id/download/:type", ElecHistoryController.downloadFile);
+router.use("/example", ElecExample);
 
 // 其他路由需要认证
 router.use(AuthController.verifyToken);
