@@ -152,16 +152,18 @@ class ElecHistoryController {
     static async getCompare(req, res) {
         const { recordId, selectDate, userId } = req.body;
         const record = await Elec.findByIdAndUserId(recordId, userId);
+        /*  这里应该是合并的数据才对 */
+        const merge_result = await Elec.getMergedDataWithRange(recordId);
         const payload = {
             formData: {
                 userId,
-                recordId,
+                recordId: merge_result.rootId,
                 rootId: recordId,
                 pvCapacity: record.pv_capacity,
                 location: record.location,
             },
             selectDate,
-            loadData: record.upload_info.data,
+            loadData: merge_result.mergedData,
         };
         try {
             const result = await AlgorithmService.elecCompare(payload);

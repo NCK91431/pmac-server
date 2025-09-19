@@ -145,9 +145,10 @@ class Elec {
             dateRange = JSON.parse(dateRange);
         }
 
-        // 递归获取根记录的起始日期
+        // 递归获取根记录的起始日期和根记录ID
         let currentRecordId = recordId;
         let startDate = null;
+        let rootId = recordId; // 初始化为当前记录ID
 
         while (currentRecordId) {
             const currentRecord = await this.findById(currentRecordId);
@@ -159,6 +160,7 @@ class Elec {
             }
 
             startDate = currentDateRange[0]; // 更新为更早的起始日期
+            rootId = currentRecordId; // 更新为当前记录ID（可能是根记录）
 
             // 继续向上追溯
             currentRecordId = currentRecord.previous_record_id;
@@ -167,6 +169,7 @@ class Elec {
         return {
             mergeRange: [startDate, dateRange[1]], // [起始日期, 结束日期]
             mergedData: mergedData,
+            rootId,
         };
     }
 }

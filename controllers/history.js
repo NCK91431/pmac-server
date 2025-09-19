@@ -185,7 +185,6 @@ class HistoryController {
     }
 
     static async getCompare(req, res) {
-        console.log("HistoryController.getCompare req.body:", req.body);
         const customer_types_MAP = {
             hospital: "医院",
             mall: "商超",
@@ -194,11 +193,13 @@ class HistoryController {
         };
         const { recordId, selectDate, userId } = req.body;
         const record = await Record.findByIdAndUserId(recordId, userId);
+        /*  这里应该是合并的数据才对 */
+        const merge_result = await Record.getMergedDataWithRange(recordId);
         const payload = {
             formData: {
                 userId,
                 recordId,
-                rootId: recordId,
+                rootId: merge_result.rootId,
                 pvConfig: record.pv_config,
                 pvCapacity: record.pv_capacity,
                 location: record.location,
@@ -209,7 +210,7 @@ class HistoryController {
                         : customer_types_MAP[record.customer_type],
             },
             selectDate,
-            loadData: record.upload_data,
+            loadData: merge_result.mergedData,
         };
         try {
             const result = await AlgorithmService.compare(payload);
